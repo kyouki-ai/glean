@@ -1,0 +1,11 @@
+node_modules/
+.glean/
+profile/
+downloads/
+plan.json
+*.log
+*.jpg
+*.png
+.DS_Store
+Thumbs.db
+.env

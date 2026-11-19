@@ -1,0 +1,37 @@
+{
+  "name": "glean-browser",
+  "version": "0.1.0",
+  "description": "Give AI agents a browser that costs ~500 tokens per page instead of ~250,000. Compact page digests, actions by id, diffs, tabs, plans.",
+  "type": "module",
+  "bin": {
+    "glean": "src/cli.mjs",
+    "glean-server": "src/server.mjs"
+  },
+  "main": "src/server.mjs",
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node src/server.mjs",
+    "cli": "node src/cli.mjs"
+  },
+  "dependencies": {
+    "playwright": "^1.65.1"
+  },
+  "keywords": [
+    "ai",
+    "agents",
+    "browser",
+    "playwright",
+    "llm",
+    "tokens",
+    "automation",
+    "mcp"
+  ],
+  "license": "MIT"
+}
