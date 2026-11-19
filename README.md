@@ -74,9 +74,12 @@ npx glean https://example.com --json
 | `GET /tab` `POST /tab` | new tab (up to `GLEAN_MAX_TABS`) |
 | `GET /tabs` `GET /close?tab=` | list / close tabs |
 | `GET /plan` `POST /plan` | external step plan (kept out of the model context) |
+| `POST /js` `{tab,expr}` | evaluate JS in the page — off unless `GLEAN_ALLOW_JS=1` |
 | `GET /health` | status |
 
 Typical agent loop: `/go` → pick an id → `/act` → act returns a fresh digest on navigation or a diff otherwise.
+
+`/act` re-collects the DOM before acting and re-locates the element by its kind+label key, so it keeps working on React/Vue pages that re-render and drop the `data-glean` markers between the digest and the action.
 
 ## Why it is cheaper
 

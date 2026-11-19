@@ -214,8 +214,14 @@ function locatorFor(t, it) {
 
 async function act(t, id, action, text) {
   const idx = Number(String(id).replace(/\D/g, '')) - 1;
-  const it = t.els[idx];
+  let it = t.els[idx];
   if (!it) return { ok: false, error: 'no element ' + id + ' — collect a fresh digest (/diff)' };
+  // React перерисовывает DOM и стирает data-glean — переснимаем и находим тот же элемент по ключу
+  try {
+    const fresh = await t.page.evaluate(COLLECT, 80);
+    const i2 = Array.isArray(fresh) ? fresh.findIndex((e) => e.key === it.key) : -1;
+    if (i2 >= 0) { t.els = fresh; it = fresh[i2]; }
+  } catch {}
   const before = t.page.url();
   const t0 = Date.now();
   try {
@@ -300,6 +306,13 @@ const srv = http.createServer(async (req, res) => {
       return send(200, { bytes: buf.length });
     }
     if (u.pathname === '/plan') { const b = await body(req); return send(200, plan(b.action, b.steps ?? b.id)); }
+    if (u.pathname === '/js') {
+      if (process.env.GLEAN_ALLOW_JS !== '1') return send(403, { error: 'set GLEAN_ALLOW_JS=1 to enable /js' });
+      const b = await body(req);
+      const t = await getTab(b.tab);
+      const r = await t.page.evaluate(b.expr);
+      return send(200, { result: r });
+    }
     return send(404, { error: 'unknown endpoint' });
   } catch (e) { return send(500, { error: String(e.message || e).slice(0, 200) }); }
 });
