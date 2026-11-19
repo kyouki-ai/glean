@@ -96,6 +96,24 @@ Typical agent loop: `/go` → pick an id → `/act` → act returns a fresh dige
 - dialogs auto-dismissed, downloads saved to the state dir;
 - captcha presence reported as a flag (not solved).
 
+
+## Use as an MCP server
+
+Any MCP client (Claude Desktop, Cursor, DSH, custom agents) can use Glean instead of a DOM-dumping browser tool:
+
+``json
+{
+  "mcpServers": {
+    "glean": {
+      "command": "npx",
+      "args": ["-y", "glean-browser", "glean-mcp"],
+      "env": { "GLEAN_URL": "http://127.0.0.1:9879" }
+    }
+  }
+}
+``
+
+Tools exposed: `browser_open`, `browser_act`, `browser_read`, `browser_tabs`, `browser_plan`. The server must be running (`npx glean-server`).
 ## Config
 
 | env | default | meaning |

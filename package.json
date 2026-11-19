@@ -5,7 +5,8 @@
   "type": "module",
   "bin": {
     "glean": "src/cli.mjs",
-    "glean-server": "src/server.mjs"
+    "glean-server": "src/server.mjs",
+    "glean-mcp": "mcp/server.mjs"
   },
   "main": "src/server.mjs",
   "files": [
