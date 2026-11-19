@@ -2,6 +2,7 @@
 
 **A browser for AI agents that costs ~500 tokens per page instead of ~250,000.**
 
+![glean demo](docs/demo.gif)
 Agents usually get a full DOM dump or an accessibility tree on every step. On a Wikipedia article that is ~246,000 tokens — for one page view. Glean sends only what an agent can act on: visible interactive elements with short ids, plus optional text or a screenshot when needed.
 
 ```
@@ -30,6 +31,16 @@ Measured on a real Wikipedia article (1,280×860 viewport, Chrome, headless):
 
 Speed (warm browser, persistent profile): page ~1.4 s, click/type 0.4–0.9 s with verification, cached page 2 ms, plan update 3 ms.
 
+
+### Why not just Playwright MCP?
+
+| | Playwright MCP | Glean |
+|---|---|---|
+| per-step payload | full DOM / accessibility tree, 20k–50k tokens | digest 300–900 tokens, diff ~100 |
+| page navigation | new snapshot every time | digest on navigation, diff otherwise |
+| screenshots | every step or on demand, full size | only when asked, JPEG, downscaled |
+| cost per page view | ~25–60¢ | ~0.02–0.03¢ |
+| warm browser | separate instance per session | persistent profile, warmed at start |
 ## Install
 
 ```bash
