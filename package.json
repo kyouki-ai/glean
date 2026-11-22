@@ -6,11 +6,13 @@
   "bin": {
     "glean": "src/cli.mjs",
     "glean-server": "src/server.mjs",
-    "glean-mcp": "mcp/server.mjs"
+    "glean-mcp": "mcp/server.mjs",
+    "glean-agentic-mcp": "mcp/agentic.mjs"
   },
   "main": "src/server.mjs",
   "files": [
     "src",
+    "mcp",
     "README.md",
     "LICENSE"
   ],
