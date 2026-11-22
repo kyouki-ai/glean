@@ -52,10 +52,14 @@ async function ensure() {
     acceptDownloads: true,
     args: ['--disable-blink-features=AutomationControlled', '--disable-dev-shm-usage', '--no-first-run'],
   });
+  // If the user closes the browser window, drop the dead context so the next
+  // call relaunches instead of failing forever with "browser has been closed".
+  ctx.on('close', () => { ctx = null; tabs.clear(); });
   for (const p of ctx.pages()) wire(p);
 }
 
 function wire(page) {
+  page.on('close', () => { for (const [id, t] of tabs) if (t.page === page) tabs.delete(id); });
   page.on('dialog', (d) => d.dismiss().catch(() => {}));
   page.on('download', async (d) => {
     try {
@@ -306,6 +310,18 @@ const srv = http.createServer(async (req, res) => {
       return send(200, { bytes: buf.length });
     }
     if (u.pathname === '/plan') { const b = await body(req); return send(200, plan(b.action, b.steps ?? b.id)); }
+    if (u.pathname === '/clickat') {
+      const b = await body(req);
+      const t = await getTab(b.tab);
+      await t.page.mouse.click(Number(b.x), Number(b.y));
+      return send(200, { ok: true });
+    }
+    if (u.pathname === '/move') {
+      const b = await body(req);
+      const t = await getTab(b.tab);
+      await t.page.mouse.move(Number(b.x), Number(b.y));
+      return send(200, { ok: true });
+    }
     if (u.pathname === '/js') {
       if (process.env.GLEAN_ALLOW_JS !== '1') return send(403, { error: 'set GLEAN_ALLOW_JS=1 to enable /js' });
       const b = await body(req);
