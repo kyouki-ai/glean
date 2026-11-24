@@ -1,11 +1,12 @@
 #!/usr/bin/env node
-// Glean MCP server (stdio): exposes a running glean server to any MCP client.
-//   node mcp/server.mjs            (expects glean-server on GLEAN_URL or http://127.0.0.1:9879)
+// Skim MCP server (stdio): exposes a running skim server to any MCP client.
+//   node mcp/server.mjs            (expects skim-server on SKIM_URL or http://127.0.0.1:9879)
 // JSON-RPC 2.0 over stdin/stdout, one message per line.
 import readline from 'node:readline';
+import { env } from '../src/env.mjs';
 
-const BASE = process.env.GLEAN_URL || 'http://127.0.0.1:9879';
-const SERVER = { name: 'glean', version: '0.1.0' };
+const BASE = env('SKIM_URL') || 'http://127.0.0.1:9879';
+const SERVER = { name: 'skim', version: '0.1.0' };
 
 const TOOLS = [
   {
@@ -144,4 +145,4 @@ rl.on('line', async (line) => {
   }
 });
 
-process.stderr.write('[glean-mcp] ready, server=' + BASE + '\n');
+process.stderr.write('[skim-mcp] ready, server=' + BASE + '\n');

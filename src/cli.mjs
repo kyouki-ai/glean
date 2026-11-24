@@ -1,22 +1,23 @@
 #!/usr/bin/env node
-// glean — one-shot compact digest of a page, no server needed.
-//   npx glean <url> [--visual] [--json] [--max=80]
+// skim — one-shot compact digest of a page, no server needed.
+//   npx skim <url> [--visual] [--json] [--max=80]
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { chromium } from 'playwright';
+import { env } from './env.mjs';
 
 const url = process.argv.slice(2).find((a) => !a.startsWith('--'));
 const visual = process.argv.includes('--visual');
 const asJson = process.argv.includes('--json');
 const max = Number((process.argv.find((a) => a.startsWith('--max=')) || '--max=80').split('=')[1]);
 if (!url) {
-  console.error('usage: glean <url> [--visual] [--json] [--max=80]');
+  console.error('usage: skim <url> [--visual] [--json] [--max=80]');
   process.exit(1);
 }
 
 function findBrowser() {
-  if (process.env.GLEAN_BROWSER) return process.env.GLEAN_BROWSER;
+  if (env('SKIM_BROWSER')) return env('SKIM_BROWSER');
   const c = [
     '/usr/bin/google-chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser',
     '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',

@@ -1,10 +1,12 @@
-// Tiny driver for the local glean server: read the current quiz question, or
+// Tiny driver for the local skim server: read the current quiz question, or
 // pick answer option(s) and go to the next page, printing the next question.
-//   node tools/glean.mjs read
-//   node tools/glean.mjs pick 3          (0-based option index)
-//   node tools/glean.mjs pick 0,2        (checkboxes)
-const BASE = process.env.GLEAN_URL || 'http://127.0.0.1:9879';
-const TAB = process.env.GLEAN_TAB || 't1';
+//   node tools/skim.mjs read
+//   node tools/skim.mjs pick 3          (0-based option index)
+//   node tools/skim.mjs pick 0,2        (checkboxes)
+import { env } from '../src/env.mjs';
+
+const BASE = env('SKIM_URL') || 'http://127.0.0.1:9879';
+const TAB = process.env.SKIM_TAB || 't1';
 
 async function js(expr) {
   const r = await fetch(BASE + '/js', {

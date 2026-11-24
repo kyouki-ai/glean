@@ -1,27 +1,36 @@
-// Glean — browser as a cheap tool for AI agents.
+// Skim — browser as a cheap tool for AI agents.
 // Compact page digest, action-by-id, diffs, tabs, plans.
 //
 //   node src/server.mjs            → http://127.0.0.1:9879
 //
 // Config (env):
-//   GLEAN_PORT        port, default 9879
-//   GLEAN_STATE_DIR   state/profile dir, default ~/.glean
-//   GLEAN_BROWSER     path to chrome/msedge executable (auto-detected otherwise)
-//   GLEAN_HEADLESS    1 (default) or 0
+//   SKIM_STATE_DIR   state/profile dir, default ~/.skim (falls back to an existing ~/.glean)
+//   SKIM_PORT        port, default 9879
+//   legacy GLEAN_* env names are still read if the SKIM_* one is missing
+//   SKIM_BROWSER     path to chrome/msedge executable (auto-detected otherwise)
+//   SKIM_HEADLESS    1 (default) or 0
 import http from 'node:http';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { chromium } from 'playwright';
+import { env } from './env.mjs';
 
-const PORT = Number(process.env.GLEAN_PORT || 9879);
-const STATE = process.env.GLEAN_STATE_DIR || path.join(os.homedir(), '.glean');
+const PORT = Number(env('SKIM_PORT') || 9879);
+const HOME = os.homedir();
+const defaultState = () => {
+  // keep an existing legacy profile (cookies, logins) unless the new dir is already there
+  const fresh = path.join(HOME, '.skim');
+  const legacy = path.join(HOME, '.glean');
+  return !fs.existsSync(fresh) && fs.existsSync(legacy) ? legacy : fresh;
+};
+const STATE = env('SKIM_STATE_DIR') || defaultState();
 const PROFILE = path.join(STATE, 'profile');
 const PLAN = path.join(STATE, 'plan.json');
 const DL = path.join(STATE, 'downloads');
-const MAX_TABS = Number(process.env.GLEAN_MAX_TABS || 5);
-const MIN_GAP = Number(process.env.GLEAN_MIN_GAP_MS || 700);
-const HEADLESS = process.env.GLEAN_HEADLESS !== '0';
+const MAX_TABS = Number(env('SKIM_MAX_TABS') || 5);
+const MIN_GAP = Number(env('SKIM_MIN_GAP_MS') || 700);
+const HEADLESS = env('SKIM_HEADLESS') !== '0';
 fs.mkdirSync(DL, { recursive: true });
 
 let ctx = null;
@@ -30,7 +39,7 @@ const lastHit = new Map();
 let seq = 0;
 
 function findBrowser() {
-  if (process.env.GLEAN_BROWSER) return process.env.GLEAN_BROWSER;
+  if (env('SKIM_BROWSER')) return env('SKIM_BROWSER');
   const c = [
     '/usr/bin/google-chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser',
     '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
@@ -157,7 +166,7 @@ const COLLECT = (limit) => {
     if (seen.has(key)) continue;
     seen.add(key);
     const wd = 'w' + (++n);
-    el.setAttribute('data-glean', wd);
+    el.setAttribute('data-skim', wd);
     const r = el.getBoundingClientRect();
     out.push({ kind, name, wd, frame: frameIdx, key, y: Math.round(r.top + scrollY) });
   }
@@ -211,7 +220,7 @@ async function diff(t) {
 }
 
 function locatorFor(t, it) {
-  const sel = `[data-glean="${it.wd}"]`;
+  const sel = `[data-skim="${it.wd}"]`;
   if (it.frame === null || it.frame === undefined) return t.page.locator(sel).first();
   return t.page.frames()[it.frame].locator(sel).first();
 }
@@ -220,7 +229,7 @@ async function act(t, id, action, text) {
   const idx = Number(String(id).replace(/\D/g, '')) - 1;
   let it = t.els[idx];
   if (!it) return { ok: false, error: 'no element ' + id + ' — collect a fresh digest (/diff)' };
-  // React перерисовывает DOM и стирает data-glean — переснимаем и находим тот же элемент по ключу
+  // React перерисовывает DOM и стирает data-skim — переснимаем и находим тот же элемент по ключу
   try {
     const fresh = await t.page.evaluate(COLLECT, 80);
     const i2 = Array.isArray(fresh) ? fresh.findIndex((e) => e.key === it.key) : -1;
@@ -323,7 +332,7 @@ const srv = http.createServer(async (req, res) => {
       return send(200, { ok: true });
     }
     if (u.pathname === '/js') {
-      if (process.env.GLEAN_ALLOW_JS !== '1') return send(403, { error: 'set GLEAN_ALLOW_JS=1 to enable /js' });
+      if (env('SKIM_ALLOW_JS') !== '1') return send(403, { error: 'set SKIM_ALLOW_JS=1 to enable /js' });
       const b = await body(req);
       const t = await getTab(b.tab);
       const r = await t.page.evaluate(b.expr);
@@ -338,6 +347,6 @@ function body(req) {
 }
 
 srv.listen(PORT, '127.0.0.1', async () => {
-  console.log('[glean] http://127.0.0.1:' + PORT);
-  ensure().then(() => console.log('[glean] browser warm')).catch((e) => console.log('[glean] browser error:', e.message));
+  console.log('[skim] http://127.0.0.1:' + PORT);
+  ensure().then(() => console.log('[skim] browser warm')).catch((e) => console.log('[skim] browser error:', e.message));
 });

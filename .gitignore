@@ -1,5 +1,5 @@
 node_modules/
-.glean/
+.skim/
 profile/
 downloads/
 plan.json

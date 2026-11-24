@@ -1,9 +1,9 @@
-# Glean
+# Skim
 
 **A browser for AI agents that sends ~330 tokens per page instead of ~34,000.**
 
-![glean demo](docs/demo.gif)
-Agents usually get a full DOM dump or an accessibility tree on every step. On a Wikipedia article the page's DOM is about 34,000 tokens — for one page view. Glean sends only what an agent can act on: visible interactive elements with short ids, plus optional text or a screenshot when needed.
+![skim demo](docs/demo.gif)
+Agents usually get a full DOM dump or an accessibility tree on every step. On a Wikipedia article the page's DOM is about 34,000 tokens — for one page view. Skim sends only what an agent can act on: visible interactive elements with short ids, plus optional text or a screenshot when needed.
 
 ```
 PAGE Neural network — Wikipedia
@@ -26,9 +26,9 @@ Measured on 24 November 2026 on [Neural network on Wikipedia](https://en.wikiped
 | raw HTML, HTTP fetch of the page | ~31,400 |
 | DOM after load (what a full dump sends) | 33,760 |
 | visible text only | ~1,780 |
-| **Glean digest** | **334** |
+| **Skim digest** | **334** |
 
-The digest for that page lists 56 actionable elements. Reproduce it with `npx glean <url> --json`: the CLI reports `html_tokens`, `digest_tokens` and the ratio itself.
+The digest for that page lists 56 actionable elements. Reproduce it with `node src/cli.mjs <url> --json`: the CLI reports `html_tokens`, `digest_tokens` and the ratio itself.
 
 An accessibility-tree tool sends less than a DOM dump but still an order of magnitude more than the digest. That comparison is not measured here, so no number is given for it. After an in-page action the server returns a diff instead of a new digest; its size depends on what changed.
 
@@ -46,7 +46,7 @@ Until a public benchmark run exists, read the table above as "what it costs", no
 
 ### Why not just Playwright MCP?
 
-| | Playwright MCP | Glean |
+| | Playwright MCP | Skim |
 |---|---|---|
 | per-step payload | full DOM / accessibility tree, tens of thousands of tokens | digest ~300–900 tokens, diff ~100 |
 | page navigation | new snapshot every time | digest on navigation, diff otherwise |
@@ -58,24 +58,24 @@ Cost per page view assumes $3 per 1M input tokens and scales linearly with the m
 
 ## Install
 
+Not on npm yet. From a clone:
+
 ```bash
-npm i glean-browser
+git clone https://github.com/kyouki-ai/skim
+cd skim && npm i
 npx playwright install chromium   # or use your system Chrome/Edge (auto-detected)
-```
-
-Run the server:
-
-```bash
-npx glean-server        # http://127.0.0.1:9879
+node src/server.mjs               # http://127.0.0.1:9879
 ```
 
 One-shot digest without a server:
 
 ```bash
-npx glean https://example.com
-npx glean https://example.com --visual   # keep images, slower
-npx glean https://example.com --json
+node src/cli.mjs https://example.com
+node src/cli.mjs https://example.com --visual   # keep images, slower
+node src/cli.mjs https://example.com --json
 ```
+
+After the first npm publish these become `npm i skim-browser`, `npx skim-server` and `npx skim <url>`.
 
 ## API
 
@@ -86,15 +86,15 @@ npx glean https://example.com --json
 | `GET /diff?tab=` | only what changed since last digest |
 | `GET /read?tab=&url=` | main text of the page |
 | `GET /shot?tab=&visual=1&save=path` | screenshot (JPEG) |
-| `GET /tab` `POST /tab` | new tab (up to `GLEAN_MAX_TABS`) |
+| `GET /tab` `POST /tab` | new tab (up to `SKIM_MAX_TABS`) |
 | `GET /tabs` `GET /close?tab=` | list / close tabs |
 | `GET /plan` `POST /plan` | external step plan (kept out of the model context) |
-| `POST /js` `{tab,expr}` | evaluate JS in the page — off unless `GLEAN_ALLOW_JS=1` |
+| `POST /js` `{tab,expr}` | evaluate JS in the page — off unless `SKIM_ALLOW_JS=1` |
 | `GET /health` | status |
 
 Typical agent loop: `/go` → pick an id → `/act` → act returns a fresh digest on navigation or a diff otherwise.
 
-`/act` re-collects the DOM before acting and re-locates the element by its kind+label key, so it keeps working on React/Vue pages that re-render and drop the `data-glean` markers between the digest and the action.
+`/act` re-collects the DOM before acting and re-locates the element by its kind+label key, so it keeps working on React/Vue pages that re-render and drop the `data-skim` markers between the digest and the action.
 
 ## Why it is cheaper
 
@@ -108,8 +108,8 @@ Typical agent loop: `/go` → pick an id → `/act` → act returns a fresh dige
 ## Robustness
 
 - persistent profile (cookies, logins survive restarts);
-- retries on navigation, rate limit per host (`GLEAN_MIN_GAP_MS`);
-- shadow DOM and same-origin iframes are collected (elements are tagged with `data-glean`);
+- retries on navigation, rate limit per host (`SKIM_MIN_GAP_MS`);
+- shadow DOM and same-origin iframes are collected (elements are tagged with `data-skim`);
 - stale ids return an explicit error instead of silently misclicking;
 - dialogs auto-dismissed, downloads saved to the state dir;
 - captcha presence reported as a flag (not solved).
@@ -117,32 +117,32 @@ Typical agent loop: `/go` → pick an id → `/act` → act returns a fresh dige
 
 ## Use as an MCP server
 
-Any MCP client (Claude Desktop, Cursor, DSH, custom agents) can use Glean instead of a DOM-dumping browser tool:
+Any MCP client (Claude Desktop, Cursor, DSH, custom agents) can use Skim instead of a DOM-dumping browser tool:
 
 ```json
 {
   "mcpServers": {
-    "glean": {
+    "skim": {
       "command": "npx",
-      "args": ["-y", "glean-browser", "glean-mcp"],
-      "env": { "GLEAN_URL": "http://127.0.0.1:9879" }
+      "args": ["-y", "skim-browser", "skim-mcp"],
+      "env": { "SKIM_URL": "http://127.0.0.1:9879" }
     }
   }
 }
 ```
 
-Tools exposed: `browser_open`, `browser_act`, `browser_read`, `browser_tabs`, `browser_plan`. The server must be running (`npx glean-server`).
+Tools exposed: `browser_open`, `browser_act`, `browser_read`, `browser_tabs`, `browser_plan`. The server must be running (`npx skim-server`).
 
 ## Config
 
 | env | default | meaning |
 |---|---|---|
-| `GLEAN_PORT` | `9879` | HTTP port |
-| `GLEAN_STATE_DIR` | `~/.glean` | profile, plan, downloads |
-| `GLEAN_BROWSER` | auto | path to Chrome/Edge executable |
-| `GLEAN_HEADLESS` | `1` | set `0` to watch the browser |
-| `GLEAN_MAX_TABS` | `5` | tab pool size |
-| `GLEAN_MIN_GAP_MS` | `700` | min delay between requests to one host |
+| `SKIM_PORT` | `9879` | HTTP port |
+| `SKIM_STATE_DIR` | `~/.skim` | profile, plan, downloads |
+| `SKIM_BROWSER` | auto | path to Chrome/Edge executable |
+| `SKIM_HEADLESS` | `1` | set `0` to watch the browser |
+| `SKIM_MAX_TABS` | `5` | tab pool size |
+| `SKIM_MIN_GAP_MS` | `700` | min delay between requests to one host |
 
 ## Limits
 

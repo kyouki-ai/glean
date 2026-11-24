@@ -6,31 +6,32 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { exec, spawn } from 'node:child_process';
+import { env } from '../src/env.mjs';
 
 const ROOT = process.env.AGENTIC_ROOT || process.cwd();
 const SERVER = { name: 'agentic', version: '0.1.0' };
 const MAX_OUT = Number(process.env.AGENTIC_MAX_OUT || 24000);
-const GLEAN = process.env.GLEAN_URL || 'http://127.0.0.1:9879';
-const GLEAN_DIR = process.env.GLEAN_DIR || (fs.existsSync(path.join(ROOT, 'projects', 'glean', 'src', 'server.mjs'))
-  ? path.join(ROOT, 'projects', 'glean')
+const SKIM = env('SKIM_URL') || 'http://127.0.0.1:9879';
+const SKIM_DIR = process.env.SKIM_DIR || (fs.existsSync(path.join(ROOT, 'projects', 'skim', 'src', 'server.mjs'))
+  ? path.join(ROOT, 'projects', 'skim')
   : ROOT);
-const GLEAN_AUTOSTART = process.env.GLEAN_AUTOSTART !== '0';
+const SKIM_AUTOSTART = process.env.SKIM_AUTOSTART !== '0';
 
-let gleanStarting = null;
-async function gleanUp() {
+let skimStarting = null;
+async function skimUp() {
   try {
-    const r = await fetch(GLEAN + '/health', { signal: AbortSignal.timeout(1500) });
+    const r = await fetch(SKIM + '/health', { signal: AbortSignal.timeout(1500) });
     return r.ok;
   } catch { return false; }
 }
-async function ensureGlean() {
-  if (await gleanUp()) return true;
-  if (!GLEAN_AUTOSTART) return false;
-  if (!gleanStarting) {
-    gleanStarting = (async () => {
-      const child = spawn(process.execPath, [path.join(GLEAN_DIR, 'src', 'server.mjs')], {
-        cwd: GLEAN_DIR,
-        env: { ...process.env, GLEAN_HEADLESS: process.env.GLEAN_HEADLESS || '0', GLEAN_ALLOW_JS: process.env.GLEAN_ALLOW_JS || '1' },
+async function ensureSkim() {
+  if (await skimUp()) return true;
+  if (!SKIM_AUTOSTART) return false;
+  if (!skimStarting) {
+    skimStarting = (async () => {
+      const child = spawn(process.execPath, [path.join(SKIM_DIR, 'src', 'server.mjs')], {
+        cwd: SKIM_DIR,
+        env: { ...process.env, SKIM_HEADLESS: env('SKIM_HEADLESS') || '0', SKIM_ALLOW_JS: env('SKIM_ALLOW_JS') || '1' },
         detached: true,
         stdio: 'ignore',
         windowsHide: true,
@@ -38,12 +39,12 @@ async function ensureGlean() {
       child.unref();
       for (let i = 0; i < 40; i++) {
         await new Promise((r) => setTimeout(r, 250));
-        if (await gleanUp()) return true;
+        if (await skimUp()) return true;
       }
       return false;
-    })().finally(() => { gleanStarting = null; });
+    })().finally(() => { skimStarting = null; });
   }
-  return gleanStarting;
+  return skimStarting;
 }
 
 const TOOLS = [
@@ -128,7 +129,7 @@ const TOOLS = [
   },
   {
     name: 'ui',
-    description: 'Browser through the local glean server: open a URL (compact digest with e1.. ids), act by id, read text, list tabs, plan.',
+    description: 'Browser through the local skim server: open a URL (compact digest with e1.. ids), act by id, read text, list tabs, plan.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -254,8 +255,8 @@ async function runTool(name, a = {}) {
     return 'noted';
   }
   if (name === 'ui') {
-    if (!(await ensureGlean())) throw new Error('glean server is not running and autostart failed: ' + GLEAN);
-    const BASE = GLEAN;
+    if (!(await ensureSkim())) throw new Error('skim server is not running and autostart failed: ' + SKIM);
+    const BASE = SKIM;
     const call = async (method, p, body) => {
       const res = await fetch(BASE + p, { method, headers: body ? { 'content-type': 'application/json' } : undefined, body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(120000) });
       const j = await res.json().catch(() => ({}));
@@ -282,7 +283,7 @@ async function runTool(name, a = {}) {
 function send(obj) { process.stdout.write(JSON.stringify(obj) + '\n'); }
 
 const rl = readline.createInterface({ input: process.stdin, crlfDelay: Infinity });
-if (GLEAN_AUTOSTART) ensureGlean().catch(() => {});
+if (SKIM_AUTOSTART) ensureSkim().catch(() => {});
 rl.on('line', async (line) => {
   const text = line.trim();
   if (!text) return;

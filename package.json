@@ -1,13 +1,13 @@
 {
-  "name": "glean-browser",
+  "name": "skim-browser",
   "version": "0.1.0",
-  "description": "Give AI agents a browser that costs ~500 tokens per page instead of ~250,000. Compact page digests, actions by id, diffs, tabs, plans.",
+  "description": "Give AI agents a browser that sends ~330 tokens per page instead of ~34,000. Compact page digests, actions by id, diffs, tabs, plans.",
   "type": "module",
   "bin": {
-    "glean": "src/cli.mjs",
-    "glean-server": "src/server.mjs",
-    "glean-mcp": "mcp/server.mjs",
-    "glean-agentic-mcp": "mcp/agentic.mjs"
+    "skim": "src/cli.mjs",
+    "skim-server": "src/server.mjs",
+    "skim-mcp": "mcp/server.mjs",
+    "skim-agentic-mcp": "mcp/agentic.mjs"
   },
   "main": "src/server.mjs",
   "files": [
