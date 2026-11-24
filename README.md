@@ -1,9 +1,9 @@
 # Glean
 
-**A browser for AI agents that costs ~500 tokens per page instead of ~250,000.**
+**A browser for AI agents that sends ~330 tokens per page instead of ~34,000.**
 
 ![glean demo](docs/demo.gif)
-Agents usually get a full DOM dump or an accessibility tree on every step. On a Wikipedia article that is ~246,000 tokens — for one page view. Glean sends only what an agent can act on: visible interactive elements with short ids, plus optional text or a screenshot when needed.
+Agents usually get a full DOM dump or an accessibility tree on every step. On a Wikipedia article the page's DOM is about 34,000 tokens — for one page view. Glean sends only what an agent can act on: visible interactive elements with short ids, plus optional text or a screenshot when needed.
 
 ```
 PAGE Neural network — Wikipedia
@@ -19,28 +19,43 @@ e4 a "History"
 
 ## Numbers
 
-Measured on a real Wikipedia article (1,280×860 viewport, Chrome, headless):
+Measured on 24 November 2026 on [Neural network on Wikipedia](https://en.wikipedia.org/wiki/Neural_network): Chrome headless, 1,280×860 viewport, warm browser with a persistent profile.
 
-| what you send | tokens |
+| what the model receives | tokens |
 |---|---|
-| raw HTML | 246,212 |
-| visible text | 13,179 |
-| **Glean digest** | **902** |
-| diff after an action | ~100 |
-| screenshot (when you need eyes) | ~1,650 |
+| raw HTML, HTTP fetch of the page | ~31,400 |
+| DOM after load (what a full dump sends) | 33,760 |
+| visible text only | ~1,780 |
+| **Glean digest** | **334** |
 
-Speed (warm browser, persistent profile): page ~1.4 s, click/type 0.4–0.9 s with verification, cached page 2 ms, plan update 3 ms.
+The digest for that page lists 56 actionable elements. Reproduce it with `npx glean <url> --json`: the CLI reports `html_tokens`, `digest_tokens` and the ratio itself.
 
+An accessibility-tree tool sends less than a DOM dump but still an order of magnitude more than the digest. That comparison is not measured here, so no number is given for it. After an in-page action the server returns a diff instead of a new digest; its size depends on what changed.
+
+Speed (warm browser, persistent profile): page ~1.4–2.2 s, click/type 0.4–0.9 s with verification, cached page 2 ms, plan update 3 ms.
+
+These are cost measurements on one article and single-host tasks. They are not a task benchmark — see below.
+
+### What is not measured yet
+
+- **Task success rate.** A cheaper step is not automatically a better agent. Nothing here measures whether an agent completes a multi-step task (login, form, checkout) with the digest instead of a full tree.
+- **Head-to-head wall-clock** against other browser tools on the same machine.
+- **Long flows**: multi-tab work, repeated logins, scrolling-heavy pages, sites behind bot protection.
+
+Until a public benchmark run exists, read the table above as "what it costs", not "how well it plays".
 
 ### Why not just Playwright MCP?
 
 | | Playwright MCP | Glean |
 |---|---|---|
-| per-step payload | full DOM / accessibility tree, 20k–50k tokens | digest 300–900 tokens, diff ~100 |
+| per-step payload | full DOM / accessibility tree, tens of thousands of tokens | digest ~300–900 tokens, diff ~100 |
 | page navigation | new snapshot every time | digest on navigation, diff otherwise |
 | screenshots | every step or on demand, full size | only when asked, JPEG, downscaled |
-| cost per page view | ~25–60¢ | ~0.02–0.03¢ |
+| cost per page view | ~10¢ | ~0.1¢ |
 | warm browser | separate instance per session | persistent profile, warmed at start |
+
+Cost per page view assumes $3 per 1M input tokens and scales linearly with the model's price. It counts input only, which is the part this table is about.
+
 ## Install
 
 ```bash
@@ -104,7 +119,7 @@ Typical agent loop: `/go` → pick an id → `/act` → act returns a fresh dige
 
 Any MCP client (Claude Desktop, Cursor, DSH, custom agents) can use Glean instead of a DOM-dumping browser tool:
 
-``json
+```json
 {
   "mcpServers": {
     "glean": {
@@ -114,9 +129,10 @@ Any MCP client (Claude Desktop, Cursor, DSH, custom agents) can use Glean instea
     }
   }
 }
-``
+```
 
 Tools exposed: `browser_open`, `browser_act`, `browser_read`, `browser_tabs`, `browser_plan`. The server must be running (`npx glean-server`).
+
 ## Config
 
 | env | default | meaning |
